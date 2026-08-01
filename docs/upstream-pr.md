@@ -1,5 +1,9 @@
 # Making SailingGMap buildable, testable, and correct
 
+You offered to hand this off — I'm happy to take it, and this is the state I'd
+be taking it over in. Merge it, ignore it, or transfer the repo and I'll carry
+it from my fork; all three work.
+
 This branch does three things, in this order and for that reason:
 
 1. **Makes the project buildable** on a released Swift toolchain.
@@ -42,18 +46,19 @@ narrower defect that survived scrutiny is in §4.
 
 ---
 
-## 1. The project could not be built by anyone
+## 1. The toolchain gap you already flagged
+
+You called this one before I hit it — the tools version wanting to come down
+from 6.4 to 6.3. For the record of *why* it's a hard stop rather than a
+nuisance: **Swift 6.4 has not shipped.** The newest release tag on
+`swiftlang/swift` is `swift-6.3.3-RELEASE`; 6.4 exists only as
+`swift-6.4.x-DEVELOPMENT-SNAPSHOT`. So resolution fails outright rather than
+warning:
 
 ```
 xcodebuild: error: Could not resolve package dependencies:
   'generalizedmap' 0.1.0 contains incompatible tools version (6.4.0)
 ```
-
-`GeneralizedMap` 0.1.0 declares `swift-tools-version: 6.4`. **Swift 6.4 has not
-shipped** — the newest release tag on `swiftlang/swift` is
-`swift-6.3.3-RELEASE`; 6.4 exists only as `swift-6.4.x-DEVELOPMENT-SNAPSHOT`.
-So the README's "Xcode 27 beta / Swift 6.4" is accurate, and it means nobody on
-a released toolchain can build this.
 
 Nothing actually needs 6.4. Both projects compile clean on 6.3.3 at
 `-swift-version 6` with full strict concurrency.
@@ -79,8 +84,10 @@ dependency, not a vendored copy or a path into somebody's home directory:
 .package(url: "https://github.com/SinanKarasu/GeneralizedMap.git", from: "0.1.0")
 ```
 
-**A one-line PR to `GeneralizedMap` accompanies this one.** Merging it makes the
-shim deletable. Its own XCTest suite passes unchanged on 6.3.3.
+**A one-line PR to `GeneralizedMap` accompanies this one** — that is the real
+fix, and merging it makes this shim deletable. Its own XCTest suite passes
+unchanged on 6.3.3. Given you've said GeneralizedMap is the one that matters to
+you, that PR is the one worth two minutes; everything here can wait.
 
 ---
 
@@ -287,6 +294,25 @@ _ = path.sailedLength(); _ = path.crossTrackPeak(); _ = path.headingChangesAtTur
 ```
 
 ---
+
+## 5b. What this says about `GeneralizedMap` itself
+
+Since that is the project you actually care about — the adapter exercised it
+fairly hard, and it came out clean:
+
+- **The topology is exactly right.** `χ = 1` for every strip count, involution
+  laws hold, and `V/E/F/darts` match the closed form for a chain of quads
+  (`8N / 2(N+1) / 3N+1 / N`) at `N ∈ {1, 2, 4, 8, 16, 32}`.
+- **`sew(_:_:alpha:)` propagating along the sewing orbit is the right call.**
+  Sewing one dart pair at α₂ sews the whole edge, which is what makes the
+  adapter's single `sew` per seam correct. Worth documenting — it is not
+  obvious from the signature, and hand-rolling the partner call gets a silent
+  `false` from `isSewable`.
+- **`createRing` + attribute containers with `onMerge`/`onSplit` did everything
+  the adapter needed** without reaching past the public API.
+
+The one thing I'd raise: `unsew` still carries the Rust port's `todo!()` for the
+attribute split. Nothing here hits it, but it will surprise someone.
 
 ## 6. What was already right
 
