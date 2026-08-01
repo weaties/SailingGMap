@@ -26,9 +26,10 @@ struct ControlsView: View {
                         "Tacking angle θ",
                         value: String(
                             format: "%.1f°",
-                            vm.tackingAngleDegrees)
+                            vm.effectiveTackingAngleDegrees)
                     ) {
                         Slider(value: $vm.tackingAngleDegrees, in: 5...80)
+                            .disabled(vm.deriveAngleFromWind)
                     }
 
                     LabeledControl(
@@ -37,6 +38,45 @@ struct ControlsView: View {
                     ) {
                         Slider(value: $vm.courseLength, in: 20...400)
                     }
+                }
+
+                Divider()
+                Text("Wind").font(.headline)
+
+                LabeledControl(
+                    "Wind from",
+                    value: String(format: "%.0f°", vm.windFromDegrees)
+                ) {
+                    Slider(value: $vm.windFromDegrees, in: 0...180)
+                }
+                LabeledControl(
+                    "No-go half-angle",
+                    value: String(format: "%.0f°", vm.noGoHalfAngleDegrees)
+                ) {
+                    Slider(value: $vm.noGoHalfAngleDegrees, in: 25...60)
+                }
+                Toggle("Derive θ from wind", isOn: $vm.deriveAngleFromWind)
+                    .toggleStyle(.switch)
+
+                MetricRow(
+                    "Course vs no-go zone",
+                    vm.courseIsInNoGoZone ? "inside — must tack" : "clear — sail direct")
+                MetricRow(
+                    "Minimum sailable θ",
+                    vm.courseIsInNoGoZone
+                        ? String(format: "%.1f°", vm.derivedTackingAngleDegrees) : "—")
+
+                if vm.handSetAngleIsUnsailable {
+                    Label(
+                        String(
+                            format:
+                                "θ = %.1f° puts a leg inside the no-go zone; %.1f° is the minimum.",
+                            vm.tackingAngleDegrees, vm.derivedTackingAngleDegrees),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Divider()
