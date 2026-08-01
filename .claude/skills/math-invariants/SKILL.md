@@ -56,20 +56,41 @@ offset of `w · tan θ`. The UI enforces even counts; the model does not, and
 should not — `arrivalOffset()` reporting non-zero is the correct behavior for
 an unbalanced path, not a bug to paper over.
 
-### I3 — Unfolding straightens iff tacks alternate
+### I3 — The unfolding is an isometric lift
 
-The reflection unfolding lifts leg `i` by the composed isometry `Φᵢ`. For the
-lifted polyline to be colinear, consecutive legs must have opposite `σ`. A
-constant-tack path lifts to a zig-zag, **not** a line.
+The reflection unfolding maps every leg to the same direction, so the lifted
+polyline is the segment `(0,0) → (L, L·tan θ)` for **any** tack sequence. That
+straightness is unconditional — it is the theorem, not a property that
+discriminates between inputs.
 
-> Historical note: the original `unfoldByHorizontalReflections` never read
-> `strip.tack` and emitted `(k·w, k·w·tanθ)` unconditionally, making
-> `unfoldedIsStraight` a tautology. This invariant is the reason every
-> unfolding test carries a constant-tack negative control.
+> **Do not** assert "a constant-tack path must not unfold straight." It is
+> mathematically false: a constant-tack path in course coordinates already *is*
+> a straight line. A review filed a bug on this premise (#7) against working
+> code.
 
-Composition order matters: `Φᵢ = Φᵢ₋₁ ∘ Rᵢ`, where `Rᵢ` is a reflection
-expressed in **original** coordinates. Writing `Rᵢ ∘ Φᵢ₋₁` reflects in
-covering coordinates about an original-frame value, which is not the same map.
+What has content is that the lift is an isometry **of the specific path**:
+
+```
+ṽ₀ = v₀                                    anchored at A
+|ṽᵢ₊₁ − ṽᵢ| = |vᵢ₊₁ − vᵢ|                  leg lengths preserved
+|ṽ_N − ṽ₀|  = path.sailedLength()          total matches distance sailed
+```
+
+Use `Unfolding.unfoldingIsIsometric(of:)`. A polyline built with the wrong
+tacking angle is perfectly straight and still fails it.
+
+Composition order matters: `Φᵢ = Φᵢ₋₁ ∘ Rᵢ`, with `Rᵢ` a reflection in
+**original** coordinates, applied first. The reverse `Rᵢ ∘ Φᵢ₋₁` reflects in
+covering coordinates about an original-frame value:
+
+```
+tacks SPSP
+   Φ∘H (correct) : (0,0) (25,25) (50,50) (75,75)  (100,100)  straight
+   H∘Φ (wrong)   : (0,0) (25,25) (50,50) (75,-25) (100,100)  discontinuous
+```
+
+A sequence with only **one** reversal cannot tell the two apart — any test of
+composition order needs at least two.
 
 ### I4 — Heading change at every reversal is `2θ`
 
