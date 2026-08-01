@@ -22,21 +22,29 @@ struct WarpedFieldTests {
 
     // MARK: - I6: the monotonicity bound
 
-    /// The reference table from `docs/invariants.md` § I6, measured on a
-    /// 200×100 grid. `expectViolations` is what the field actually does; the
-    /// bound predicate must agree with it.
-    static let bumpCases: [(amplitude: Double, sigma: Double, expectViolations: Bool)] = [
-        (0.12, 18, false),
-        (0.30, 18, true),
-        (0.30, 8, true),
-        (0.20, 6, true),
-        (0.05, 4, false),
+    /// One row of the reference table in `docs/invariants.md` § I6.
+    ///
+    /// A named type rather than a tuple so the third member reads as what it
+    /// is — the *measured* behavior of the field, which the bound predicate
+    /// must reproduce.
+    struct BumpCase: Sendable {
+        let amplitude: Double
+        let sigma: Double
+        /// Measured on a 200×100 grid: does this configuration actually break
+        /// monotonicity?
+        let expectViolations: Bool
+    }
+
+    static let bumpCases: [BumpCase] = [
+        BumpCase(amplitude: 0.12, sigma: 18, expectViolations: false),
+        BumpCase(amplitude: 0.30, sigma: 18, expectViolations: true),
+        BumpCase(amplitude: 0.30, sigma: 8, expectViolations: true),
+        BumpCase(amplitude: 0.20, sigma: 6, expectViolations: true),
+        BumpCase(amplitude: 0.05, sigma: 4, expectViolations: false),
     ]
 
     @Test("I6: the bound predicts monotonicity for every reference case", arguments: bumpCases)
-    func boundPredictsMonotonicity(
-        testCase: (amplitude: Double, sigma: Double, expectViolations: Bool)
-    ) {
+    func boundPredictsMonotonicity(testCase: BumpCase) {
         let field = warped(testCase.amplitude, testCase.sigma)
         let measured = Foliation.monotonicityViolations(of: field, samplesS: 200, samplesN: 100)
 
@@ -47,9 +55,7 @@ struct WarpedFieldTests {
     }
 
     @Test("I6: maximum bump slope is |a| / (sigma * sqrt(e))", arguments: bumpCases)
-    func maximumSlopeMatchesClosedForm(
-        testCase: (amplitude: Double, sigma: Double, expectViolations: Bool)
-    ) {
+    func maximumSlopeMatchesClosedForm(testCase: BumpCase) {
         let field = warped(testCase.amplitude, testCase.sigma)
         let expected = abs(testCase.amplitude) / (testCase.sigma * exp(0.5))
         #expect(isApprox(field.maximumBumpSlope, expected, relative: 1e-12))
