@@ -62,7 +62,7 @@ public struct WindModel: Hashable, Codable, Sendable {
 // MARK: - Tack
 
 /// Discrete control state.  ±1 in the math, "starboard" / "port" in the world.
-public enum Tack: Int, Hashable, Codable, CaseIterable {
+public enum Tack: Int, Hashable, Codable, CaseIterable, Sendable {
     case starboard = 1  // wind on the starboard (right) side
     case port = -1  // wind on the port (left) side
 

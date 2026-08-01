@@ -56,20 +56,21 @@ without them.
 The defining bug of this codebase looked like this:
 
 ```swift
-/// The classic "billiard unfolding" of a tacking path.  We reflect every
-/// down-going (σ = −1) leg across the horizontal line n = n_i …
-public static func unfoldByHorizontalReflections(of path: TackPath) -> [Point2D] {
-    for strip in path.strips {
-        s̃ += w; ñ += w * tanθ          // ← never reads strip.tack
-        vs.append(Point2D(x: s̃, y: ñ))
+public func headingChangesAtTurns() -> [Double] {
+    for i in 1..<pts.count {
+        let band = bandIndex(forProgress: field.value(at: pts[i]))   // band AT pts[i]
+        let v = pts[i] - pts[i - 1]
+        if band != prevBand {
+            result.append(acos(dot(prevHeading, v)))   // ← both segments pre-turn
+        }
+        prevHeading = v
     }
 }
 ```
 
-It emits a straight line by construction. The companion check —
-`unfoldedIsStraight(_:)` — then verified that straight line was straight. Both
-the function and its test were "passing" for every input, including a path that
-missed the destination by the entire course length.
+It returns `0.0` at every turn, forever, where the answer should be `2θ = 90°`.
+The value fed a cost term wired to a UI slider, so the slider silently did
+nothing. Nothing caught it because nothing asserted what the number should be.
 
 **Therefore: every test of a mathematical claim must include a negative
 control** — an input for which the property is *false*, asserted to be
@@ -77,7 +78,7 @@ rejected. A test suite that cannot fail is documentation with extra steps.
 
 | Claim under test | Positive case | **Required negative control** |
 |---|---|---|
-| Alternating tacks unfold straight | uniform alternating path → straight | all-same-tack path → **not** straight |
+| Heading change at a reversal is `2θ` | linear field → all turns `≈ 2θ` | none may be identically `0` |
 | Sailed length is `L / cos θ` | uniform strips → matches closed form | θ → π/2 → diverges, not silently clamped |
 | Seam is reflective iff tack flips | alternating → all seams reflective | constant tack → **zero** reflective seams |
 | Progress field is monotonic | `amp` below bound → 0 violations | `amp` above bound → **> 0** violations |
@@ -85,6 +86,25 @@ rejected. A test suite that cannot fail is documentation with extra steps.
 
 If you cannot construct the negative control, you do not yet understand the
 claim well enough to test it.
+
+### The corollary: a vacuous check looks exactly like a fooled one
+
+`unfoldedIsStraight(_:)` returns `true` for every input. That is *correct* — the
+unfolding straightens any tack sequence, so the property is unconditional — but
+it is also **useless**, because it cannot distinguish a right answer from a
+wrong one.
+
+An early review of this repo read that vacuity as evidence of a fabricated
+implementation and filed a bug against working code (issue #7). From the
+outside, "cannot fail" and "is being fooled" are indistinguishable. Both are
+resolved the same way: replace the unconditional property with one tied to the
+specific input. `unfoldingIsIsometric(of:)` asserts the lift preserves *this*
+path's leg lengths and total sailed distance — and a polyline built with the
+wrong angle fails it while remaining perfectly straight.
+
+So the rule is not only "write a negative control." It is: **if you cannot
+construct an input that makes the check fail, the check is not yet a test** —
+regardless of whether the code under it is right or wrong.
 
 ---
 

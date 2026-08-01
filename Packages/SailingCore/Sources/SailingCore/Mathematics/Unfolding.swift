@@ -60,8 +60,17 @@ public enum Unfolding {
     /// polyline becomes a straight line of slope tan θ in the covering frame.
     ///
     /// Returns the unfolded vertex sequence in covering coordinates (s̃, ñ).
-    /// For a uniform alternating path, the result is colinear:
-    ///     ṽ_k = (k · w, k · w · tan θ).
+    /// For uniform strips the result is colinear: ṽ_k = (k · w, k · w · tan θ).
+    ///
+    /// **Straightness is unconditional.** Because every leg is reflected to
+    /// point the same way, the lift is the segment (0,0) → (L, L·tan θ) for
+    /// *any* tack sequence — not only alternating ones. The closed form below
+    /// is therefore exact rather than a shortcut, and it legitimately does not
+    /// need to read `strip.tack`.
+    ///
+    /// A consequence worth stating plainly: `unfoldedIsStraight` on this output
+    /// cannot fail, so it verifies nothing about the input path. Use
+    /// ``unfoldingIsIsometric(of:)`` when you need a check with content.
     public static func unfoldByHorizontalReflections(
         of path: TackPath
     ) -> [Point2D] {
@@ -104,17 +113,75 @@ public enum Unfolding {
         var σ_prev: Double = path.strips.first?.tack.sign ?? 1
         for strip in path.strips {
             let σ = strip.tack.sign
-            // When the tack flips, compose with a horizontal reflection
-            // across the current n.
+            // When the tack flips, compose with a horizontal reflection across
+            // the current n.
+            //
+            // Order matters: `H` is expressed in ORIGINAL coordinates, so it
+            // must be applied first — Φᵢ = Φᵢ₋₁ ∘ H. The reverse (H ∘ Φᵢ₋₁)
+            // reflects in *covering* coordinates about an original-frame value
+            // and produces a lift that is not even continuous across seams:
+            //
+            //     tacks SPSP
+            //       Φ∘H : (0,0) (25,25) (50,50) (75,75)  (100,100)  straight
+            //       H∘Φ : (0,0) (25,25) (50,50) (75,-25) (100,100)  broken
+            //
+            // A single-reversal sequence cannot tell the two apart, which is
+            // why this went unnoticed. See issue #8.
             if σ != σ_prev {
                 let H = PlanarIsometry.reflectionAcrossHorizontal(b: n)
-                current = H.compose(current)
+                current = current.compose(H)
             }
             Φ.append(current)
             n += σ * strip.width * tanθ
             σ_prev = σ
         }
         return Φ
+    }
+
+    /// Whether the unfolded polyline is a genuine isometric lift of `path`.
+    ///
+    /// Unlike ``unfoldedIsStraight(_:)``, this **can fail**: it ties the lift to
+    /// the specific path rather than checking a property that holds
+    /// unconditionally. It asserts that
+    ///
+    /// 1. the lift is anchored at A,
+    /// 2. every leg keeps its original length, and
+    /// 3. the end-to-end distance equals the distance actually sailed.
+    ///
+    /// A polyline built with the wrong tacking angle is perfectly straight and
+    /// still fails this.
+    public static func unfoldingIsIsometric(
+        of path: TackPath,
+        tol: Double = 1e-9
+    ) -> Bool {
+        let unfolded = unfoldByHorizontalReflections(of: path)
+        guard let first = unfolded.first, let last = unfolded.last else { return false }
+        guard first.x.magnitude <= tol, first.y.magnitude <= tol else { return false }
+        guard legLengthsMatch(unfolded, of: path, tol: tol) else { return false }
+
+        let sailed = path.sailedLength()
+        guard sailed.isFinite else { return (last - first).magnitude.isInfinite }
+        return abs((last - first).magnitude - sailed) <= tol * max(1, sailed)
+    }
+
+    /// Whether `candidate`'s per-leg lengths match `path`'s, leg for leg.
+    ///
+    /// Exposed separately so a test can substitute a deliberately wrong
+    /// polyline — the negative control that gives ``unfoldingIsIsometric(of:)``
+    /// its meaning.
+    public static func legLengthsMatch(
+        _ candidate: [Point2D],
+        of path: TackPath,
+        tol: Double = 1e-9
+    ) -> Bool {
+        let original = path.courseVertices()
+        guard candidate.count == original.count else { return false }
+        for i in 1..<original.count {
+            let before = (original[i] - original[i - 1]).magnitude
+            let after = (candidate[i] - candidate[i - 1]).magnitude
+            if abs(before - after) > tol * max(1, before) { return false }
+        }
+        return true
     }
 
     /// Sanity check: unfolded polyline is straight to within `tol`.

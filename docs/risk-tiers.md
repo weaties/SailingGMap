@@ -17,13 +17,20 @@ Each has already shipped a defect that passed review and ran in production:
 
 | File | Defect | Why tests didn't catch it |
 |---|---|---|
-| `Unfolding.swift` | `unfoldByHorizontalReflections` never read `strip.tack`; emitted a straight line unconditionally | The companion check verified that straight line was straight — a tautology. No negative control existed. |
+| `Unfolding.swift` | `cumulativeIsometries` composed reflections as `H ∘ Φ` instead of `Φ ∘ H`, giving a lift that is discontinuous across seams | Dead code — nothing called it, so no output ever disagreed. A single-reversal path also cannot distinguish the two orders. |
 | `GeneralizedTackPath.swift` | `headingChangesAtTurns` returned all zeros (off-by-one in crossing detection) | No test asserted the expected `2θ`; the value fed a cost term nobody read. |
 | `ProgressField.swift` | Documented monotonicity bound off by `σ/√e`; reported "safe" for violating configs | The bound was in a comment, never executed. |
 | `SailingGMapTopology.swift` | `precondition(map.sew(...))` — a mutating call inside an assertion, elided under `-Ounchecked` | Never built with `-Ounchecked`. |
 
 The common thread: **a mathematical claim written in prose, never executed.**
 The Critical tier exists to force those claims into tests.
+
+There is a fifth entry worth recording as a near-miss. `unfoldedIsStraight`
+returns `true` for every input — correctly, since the unfolding theorem is
+unconditional. A review mistook that vacuity for a fabricated implementation
+and filed a bug against working code (#7). The lesson is symmetric with the
+others: an assertion that cannot fail tells you nothing about the code beneath
+it, in *either* direction.
 
 ## The Critical gate, in order
 

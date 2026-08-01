@@ -12,7 +12,7 @@ correct implementation from one that ignores its input — see `AGENTS.md`
 |---|---|---|---|---|
 | **I1** | Sailed length `L_path = L / cos θ`, independent of strip count `N` | any even `N ∈ [2, 64]` matches the closed form | `θ → π/2` returns `.infinity`, not a finite value | rel `1e-12` |
 | **I2** | Path arrives at B ⟺ `Σ σᵢ wᵢ tan θ = 0` | even `N` ⟹ `arrivalOffset ≈ 0` | odd `N` ⟹ `arrivalOffset = w·tan θ ≠ 0` | abs `1e-9` |
-| **I3** | Unfolded polyline is colinear ⟺ tacks alternate | uniform alternating ⟹ straight | constant tack ⟹ **not** straight | abs `1e-9` |
+| **I3** | The unfolding is an isometric lift of the path | leg lengths preserved; total = `sailedLength()` | a straight polyline with the wrong angle ⟹ **rejected** | rel `1e-9` |
 | **I4** | Heading change at each reversal is `2θ`; there are `N − 1` of them | linear field ⟹ all `≈ 2θ` | none may be identically `0` | abs `1e-9` rad |
 | **I5** | Strip chain is a topological disk: `χ = V − E + F = 1` | every `N`: darts `8N`, V `2(N+1)`, E `3N+1`, F `N` | a torn/unsewn chain ⟹ `χ ≠ 1` | exact (integers) |
 | **I6** | Warped field is monotonic ⟺ `\|a\| / (σ·√e) < 1/L` | `a=0.12, σ=18` ⟹ 0 violations | `a=0.30, σ=8` ⟹ **> 0** violations | exact (counted) |
@@ -38,11 +38,25 @@ Uniform alternating strips need **even** `N`. The model does not enforce this
 and should not; `arrivalOffset()` reporting non-zero for an unbalanced path is
 correct behavior, not something to clamp.
 
-### I3 — Unfolding straightens iff tacks alternate
+### I3 — The unfolding is an isometric lift
 
-`Φᵢ = Φᵢ₋₁ ∘ Rᵢ` with `Rᵢ` a reflection in **original** coordinates. The
-reversed order `Rᵢ ∘ Φᵢ₋₁` reflects in covering coordinates about an
-original-frame value — a different map, and wrong.
+Straightness is **unconditional**: the construction reflects every leg to the
+same direction, so the lift is the segment `(0,0) → (L, L·tan θ)` for any tack
+sequence. It therefore cannot serve as a correctness check.
+
+> Corrected 2026-08-01. This invariant previously read "colinear ⟺ tacks
+> alternate", which is false — a constant-tack path is already a straight line
+> in course coordinates. Issue #7 was filed against working code on that
+> premise and closed as invalid.
+
+The content is that the lift is an isometry of the *specific* path:
+anchored at A, leg lengths preserved, end-to-end distance equal to
+`sailedLength()`. A polyline built with the wrong tacking angle is perfectly
+straight and fails all three.
+
+Composition order: `Φᵢ = Φᵢ₋₁ ∘ Rᵢ` with `Rᵢ` in **original** coordinates. The
+reverse gives a lift that is discontinuous across seams, and a single-reversal
+path cannot distinguish the two orders.
 
 ### I4 — Heading change per reversal
 
