@@ -163,30 +163,42 @@ public struct GeneralizedTackPath {
     /// Sequence of heading-change magnitudes at each tack reversal.
     /// In the rhumb-line case |Δθ| ≡ 2θ at every reversal; in a warped
     /// field it varies because û(p) rotates between reversals.
+    ///
+    /// Indexing note (issue #11). Segment `i` runs `pts[i] → pts[i+1]` and was
+    /// generated using the band at **`pts[i]`** — the point the step departed
+    /// from. A reversal between segments `i−1` and `i` therefore shows up as a
+    /// band change between `pts[i−1]` and `pts[i]`, and the turn is the angle
+    /// between those two segments.
+    ///
+    /// The previous implementation detected the change at `pts[i]` but compared
+    /// `pts[i−1] − pts[i−2]` against `pts[i] − pts[i−1]` — both of which are
+    /// still *pre-turn*, because the tack that produced the step into `pts[i]`
+    /// came from the band at `pts[i−1]`. It therefore returned `0.0` at every
+    /// reversal, with the correct count, silently zeroing the
+    /// `headingChangeWeight` cost term.
     public func headingChangesAtTurns() -> [Double] {
-        var result: [Double] = []
         let pts = integrateInCourseFrame()
         guard pts.count >= 3 else { return [] }
-        var prevHeading: Vector2D?
-        var prevBand = bandIndex(forProgress: 0)
-        for i in 1..<pts.count {
-            let s = field.value(sCoord: pts[i].x, nCoord: pts[i].y)
-            let band = bandIndex(forProgress: s, hint: prevBand)
-            let v = pts[i] - pts[i - 1]
-            if band != prevBand {
-                if let ph = prevHeading {
-                    let cosΔ = max(
-                        -1,
-                        min(
-                            1,
-                            Vector2D.dot(
-                                ph.normalized(),
-                                v.normalized())))
-                    result.append(acos(cosΔ))
-                }
-                prevBand = band
-            }
-            prevHeading = v
+
+        var result: [Double] = []
+        var band = bandIndex(
+            forProgress: field.value(sCoord: pts[0].x, nCoord: pts[0].y))
+
+        // Stop at count−1: the final point has no outgoing segment, so a
+        // crossing detected there has no post-turn heading to compare against.
+        for i in 1..<(pts.count - 1) {
+            let next = bandIndex(
+                forProgress: field.value(sCoord: pts[i].x, nCoord: pts[i].y),
+                hint: band)
+            guard next != band else { continue }
+
+            let before = pts[i] - pts[i - 1]  // generated in the old band
+            let after = pts[i + 1] - pts[i]  // generated in the new band
+            let cosΔ = max(
+                -1,
+                min(1, Vector2D.dot(before.normalized(), after.normalized())))
+            result.append(acos(cosΔ))
+            band = next
         }
         return result
     }
