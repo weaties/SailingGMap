@@ -67,19 +67,31 @@ private struct CountingField: ProgressField {
 @Suite("Integration budget")
 struct IntegrationBudgetTests {
 
-    private func makePath() -> (GeneralizedTackPath, AnyProgressField, SampleCounter) {
+    /// A path, the field it integrates over, and the counter watching that
+    /// field. Named rather than a 3-tuple so the counter's role is legible at
+    /// the call site.
+    private struct Fixture {
+        let path: GeneralizedTackPath
+        let field: AnyProgressField
+        let counter: SampleCounter
+    }
+
+    private func makeFixture() -> Fixture {
         let counter = SampleCounter()
         let axis = CourseAxis.canonical(length: 100)
         let field = AnyProgressField(
             CountingField(counter: counter, inner: LinearProgressField(axis: axis, halfWidth: 50)))
-        let path = GeneralizedTackPath.uniformAlternating(
-            field: field, bandCount: 8, tackingAngle: .pi / 4)
-        return (path, field, counter)
+        return Fixture(
+            path: GeneralizedTackPath.uniformAlternating(
+                field: field, bandCount: 8, tackingAngle: .pi / 4),
+            field: field,
+            counter: counter)
     }
 
     @Test("a single integration is the unit of work")
     func singleIntegrationBaseline() {
-        let (path, _, counter) = makePath()
+        let f = makeFixture()
+        let (path, counter) = (f.path, f.counter)
         _ = path.integrate()
         // Every step samples the gradient exactly once, so this is the step count.
         #expect(counter.gradientCalls > 100)
@@ -87,7 +99,8 @@ struct IntegrationBudgetTests {
 
     @Test("metrics() integrates exactly once, not three times")
     func metricsIntegratesOnce() {
-        let (path, _, counter) = makePath()
+        let f = makeFixture()
+        let (path, counter) = (f.path, f.counter)
 
         _ = path.integrate()
         let oneIntegration = counter.gradientCalls
@@ -105,7 +118,8 @@ struct IntegrationBudgetTests {
 
     @Test("a cost breakdown integrates exactly once")
     func costBreakdownIntegratesOnce() {
-        let (path, field, counter) = makePath()
+        let f = makeFixture()
+        let (path, field, counter) = (f.path, f.field, f.counter)
 
         _ = path.integrate()
         let oneIntegration = counter.gradientCalls
@@ -125,7 +139,8 @@ struct IntegrationBudgetTests {
         // The control that gives the previous test meaning. If the individual
         // accessors were also somehow free, `costBreakdownIntegratesOnce` would
         // pass trivially and prove nothing about the consolidation.
-        let (path, _, counter) = makePath()
+        let f = makeFixture()
+        let (path, counter) = (f.path, f.counter)
 
         _ = path.integrate()
         let oneIntegration = counter.gradientCalls
@@ -141,7 +156,7 @@ struct IntegrationBudgetTests {
     @Test("metrics agree with the individual accessors")
     func metricsAgreeWithAccessors() {
         // Consolidation must not change the answers.
-        let (path, _, _) = makePath()
+        let path = makeFixture().path
         let m = path.metrics()
 
         #expect(isApprox(m.sailedLength, path.sailedLength(), relative: 1e-12))
