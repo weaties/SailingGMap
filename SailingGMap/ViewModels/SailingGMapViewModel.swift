@@ -18,7 +18,26 @@ final class SailingGMapViewModel: ObservableObject {
     }
 
     /// Tacking angle θ off the AB axis, in degrees (UI-friendly).
+    /// Used directly unless ``deriveAngleFromWind`` is on.
     @Published var tackingAngleDegrees: Double = 45
+
+    // MARK: - Wind (issue #16)
+    //
+    // `WindModel` existed but nothing referenced it, so the app had no wind
+    // direction and no no-go enforcement — θ was a free slider that could be
+    // set to angles no boat could sail. These bind it to the UI.
+
+    /// Direction the wind blows **from**, in degrees clockwise from the
+    /// cross-course axis. 0° puts the wind abeam (no tacking needed); 90° is
+    /// dead upwind along the course.
+    @Published var windFromDegrees: Double = 90
+
+    /// Half-width of the close-hauled no-go zone. Realistic: 35°–50°.
+    @Published var noGoHalfAngleDegrees: Double = 45
+
+    /// When on, θ is derived from the wind instead of set by hand, so the
+    /// displayed path is always one the boat could actually sail.
+    @Published var deriveAngleFromWind: Bool = false
 
     /// Course length in arbitrary units.
     @Published var courseLength: Double = 100
@@ -37,7 +56,39 @@ final class SailingGMapViewModel: ObservableObject {
 
     // MARK: - Derived: core frames + fields
 
-    var tackingAngleRadians: Double { tackingAngleDegrees * .pi / 180 }
+    /// The wind as configured, in the world frame. The course runs along +x,
+    /// so `windFromDegrees = 90` points the wind straight down the course.
+    var windModel: WindModel {
+        WindModel(
+            fromDirection: Vector2D(dx: 0, dy: 1).rotated(by: -windFromDegrees * .pi / 180),
+            noGoHalfAngle: noGoHalfAngleDegrees * .pi / 180
+        )
+    }
+
+    /// The smallest symmetric tacking angle that keeps both legs sailable,
+    /// given the current wind. Zero when the rhumb line is already outside the
+    /// no-go zone.
+    var derivedTackingAngleDegrees: Double {
+        windModel.tackingAngle(towards: axis) * 180 / .pi
+    }
+
+    /// Whether the rhumb line itself lies inside the no-go zone.
+    var courseIsInNoGoZone: Bool { derivedTackingAngleDegrees > 0 }
+
+    /// θ actually used by every derived path.
+    var effectiveTackingAngleDegrees: Double {
+        deriveAngleFromWind ? derivedTackingAngleDegrees : tackingAngleDegrees
+    }
+
+    var tackingAngleRadians: Double { effectiveTackingAngleDegrees * .pi / 180 }
+
+    /// Whether the hand-set angle would put a leg inside the no-go zone —
+    /// i.e. the drawn path is not one the boat could sail. Advisory only when
+    /// ``deriveAngleFromWind`` is off.
+    var handSetAngleIsUnsailable: Bool {
+        guard !deriveAngleFromWind, courseIsInNoGoZone else { return false }
+        return tackingAngleDegrees + 1e-9 < derivedTackingAngleDegrees
+    }
 
     var axis: CourseAxis {
         CourseAxis(
