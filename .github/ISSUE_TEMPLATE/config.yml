@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Toolchain / build failure
+    url: https://github.com/weaties/SailingGMap/blob/main/docs/toolchain.md
+    about: "`incompatible tools version (6.4.0)`, xcode-select, or Rosetta issues are almost certainly covered here."
+  - name: Invariants reference
+    url: https://github.com/weaties/SailingGMap/blob/main/docs/invariants.md
+    about: The numbered list of properties that must hold, with their negative controls.

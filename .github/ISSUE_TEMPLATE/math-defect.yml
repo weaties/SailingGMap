@@ -1,0 +1,60 @@
+name: Mathematical defect
+description: The code does not do what the mathematics (or its own doc comment) says
+labels: ["bug", "math"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For defects where the implementation disagrees with a derivation — the
+        dominant failure mode in this codebase. If it's a crash, a build
+        failure, or a UI problem, use the blank issue form instead.
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim
+      description: What does the doc comment, README, or derivation say should be true?
+      placeholder: |
+        `Unfolding.swift` states: "the polyline becomes a straight line of
+        slope tan θ in the covering frame."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happens
+      description: Measured output. Paste the numbers, not a description of them.
+      placeholder: |
+        unfoldedIsStraight(alternating) = true
+        unfoldedIsStraight(all-same)    = true   <- this path misses B by 100 units
+        random tacks -> unfoldedIsStraight = true
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: negative-control
+    attributes:
+      label: Negative control
+      description: >
+        An input for which the property should be FALSE. This is what proves the
+        defect is real rather than a misreading, and it becomes a required test.
+      placeholder: A constant-tack path lands a full course-length off the rhumb line, so it must not unfold straight.
+    validations:
+      required: true
+
+  - type: input
+    id: invariant
+    attributes:
+      label: Invariant ID
+      description: Which `docs/invariants.md` entry does this violate? Leave blank if it needs a new one.
+      placeholder: I3
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit evaluated
+      placeholder: 2765b7e
+    validations:
+      required: true

@@ -1,0 +1,89 @@
+# SwiftLint configuration for SailingGMap.
+#
+# Note on identifiers: this codebase deliberately uses mathematical Unicode
+# identifiers (θ, σ, û, n̂, s̃, Φ) so the code reads like the derivations it
+# implements. AGENTS.md § "Coding conventions" makes this explicit. The
+# identifier rules below are relaxed accordingly — do not "fix" them by
+# ASCII-ifying the math.
+
+included:
+  - Packages/SailingCore/Sources
+  - Packages/SailingCore/Tests
+  - SailingGMap
+
+excluded:
+  - Packages/SailingCore/.build
+  - .build
+  - DerivedData
+
+disabled_rules:
+  - todo                      # tracked as GitHub issues, not lint failures
+  - trailing_comma            # swift-format owns comma placement
+
+opt_in_rules:
+  - array_init
+  - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_first_not_nil
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - explicit_init
+  - fallthrough
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - last_where
+  - literal_expression_end_indentation
+  - modifier_order
+  - operator_usage_whitespace
+  - overridden_super_call
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - static_operator
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - yoda_condition
+
+line_length:
+  warning: 100
+  error: 120
+  ignores_comments: false
+  ignores_urls: true
+
+identifier_name:
+  min_length: 1               # θ, σ, u, n, L, w are the domain's own names
+  max_length: 50
+  allowed_symbols: ["_"]
+  validates_start_with_lowercase: false   # Φ, Δ are legitimate here
+
+type_name:
+  min_length: 3
+  max_length: 50
+
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 400
+  error: 600
+  ignore_comment_only_lines: true
+
+cyclomatic_complexity:
+  warning: 12
+  error: 20
+
+nesting:
+  type_level: 2
+
+force_unwrapping:
+  severity: error             # a crash in a math routine is a silent wrong answer
+
+reporter: xcode
