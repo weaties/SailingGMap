@@ -147,8 +147,10 @@ public struct PlanarIsometry: Hashable, Codable, Sendable {
     public var m00, m01, m10, m11: Double
     public var tx, ty: Double
 
-    public init(m00: Double, m01: Double, m10: Double, m11: Double,
-                tx: Double, ty: Double) {
+    public init(
+        m00: Double, m01: Double, m10: Double, m11: Double,
+        tx: Double, ty: Double
+    ) {
         self.m00 = m00; self.m01 = m01
         self.m10 = m10; self.m11 = m11
         self.tx = tx; self.ty = ty

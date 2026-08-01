@@ -3,6 +3,7 @@
 //  Sailing
 //
 
+import SailingCore
 import SwiftUI
 
 struct ControlsView: View {
@@ -21,14 +22,19 @@ struct ControlsView: View {
                         Slider(value: stripCountBinding, in: 2...32, step: 2)
                     }
 
-                    LabeledControl("Tacking angle θ",
-                                   value: String(format: "%.1f°",
-                                                 vm.tackingAngleDegrees)) {
+                    LabeledControl(
+                        "Tacking angle θ",
+                        value: String(
+                            format: "%.1f°",
+                            vm.tackingAngleDegrees)
+                    ) {
                         Slider(value: $vm.tackingAngleDegrees, in: 5...80)
                     }
 
-                    LabeledControl("Course length L",
-                                   value: String(format: "%.0f", vm.courseLength)) {
+                    LabeledControl(
+                        "Course length L",
+                        value: String(format: "%.0f", vm.courseLength)
+                    ) {
                         Slider(value: $vm.courseLength, in: 20...400)
                     }
                 }
@@ -39,18 +45,26 @@ struct ControlsView: View {
                     .toggleStyle(.switch)
 
                 Group {
-                    LabeledControl("Bump amplitude",
-                                   value: String(format: "%+.3f",
-                                                 vm.bumpAmplitude)) {
+                    LabeledControl(
+                        "Bump amplitude",
+                        value: String(
+                            format: "%+.3f",
+                            vm.bumpAmplitude)
+                    ) {
                         Slider(value: $vm.bumpAmplitude, in: -0.30...0.30)
                     }
-                    LabeledControl("Bump σ",
-                                   value: String(format: "%.1f", vm.bumpSigma)) {
+                    LabeledControl(
+                        "Bump σ",
+                        value: String(format: "%.1f", vm.bumpSigma)
+                    ) {
                         Slider(value: $vm.bumpSigma, in: 4...60)
                     }
-                    LabeledControl("Bump centre s/L",
-                                   value: String(format: "%.2f",
-                                                 vm.bumpCenterFraction)) {
+                    LabeledControl(
+                        "Bump centre s/L",
+                        value: String(
+                            format: "%.2f",
+                            vm.bumpCenterFraction)
+                    ) {
                         Slider(value: $vm.bumpCenterFraction, in: 0.05...0.95)
                     }
                 }
@@ -58,50 +72,62 @@ struct ControlsView: View {
                 .opacity(vm.useWarpedField ? 1.0 : 0.45)
 
                 let vio = vm.monotonicityViolation
-                MetricRow("Monotonicity violations",
-                          String(format: "%.0f%%", vio * 100))
+                MetricRow(
+                    "Monotonicity violations",
+                    String(format: "%.0f%%", vio * 100))
 
                 Divider()
                 Text("Cost weights").font(.headline)
-                LabeledControl("Turn penalty λ",
-                               value: String(format: "%.2f", vm.turnPenalty)) {
+                LabeledControl(
+                    "Turn penalty λ",
+                    value: String(format: "%.2f", vm.turnPenalty)
+                ) {
                     Slider(value: $vm.turnPenalty, in: 0...20)
                 }
-                LabeledControl("Heading-change μ (×|Δθ|²)",
-                               value: String(format: "%.2f",
-                                             vm.headingChangeWeight)) {
+                LabeledControl(
+                    "Heading-change μ (×|Δθ|²)",
+                    value: String(
+                        format: "%.2f",
+                        vm.headingChangeWeight)
+                ) {
                     Slider(value: $vm.headingChangeWeight, in: 0...10)
                 }
-                LabeledControl("Swing penalty",
-                               value: String(format: "%.2f", vm.swingPenalty)) {
+                LabeledControl(
+                    "Swing penalty",
+                    value: String(format: "%.2f", vm.swingPenalty)
+                ) {
                     Slider(value: $vm.swingPenalty, in: 0...5)
                 }
-                LabeledControl("Foliation ν (×∫|Δs|²)",
-                               value: String(format: "%.2f",
-                                             vm.foliationSmoothnessWeight)) {
+                LabeledControl(
+                    "Foliation ν (×∫|Δs|²)",
+                    value: String(
+                        format: "%.2f",
+                        vm.foliationSmoothnessWeight)
+                ) {
                     Slider(value: $vm.foliationSmoothnessWeight, in: 0...100)
                 }
 
                 Divider()
                 Text("Cost breakdown").font(.headline)
-                let cb = vm.useWarpedField
+                let cb =
+                    vm.useWarpedField
                     ? vm.costBreakdownGeneralized
                     : vm.costBreakdownRhumb
-                MetricRow("· length",            String(format: "%.3f", cb.length))
-                MetricRow("· turns",             String(format: "%.3f", cb.turns))
-                MetricRow("· heading-change",    String(format: "%.3f", cb.headingChange))
-                MetricRow("· swing",             String(format: "%.3f", cb.swing))
+                MetricRow("· length", String(format: "%.3f", cb.length))
+                MetricRow("· turns", String(format: "%.3f", cb.turns))
+                MetricRow("· heading-change", String(format: "%.3f", cb.headingChange))
+                MetricRow("· swing", String(format: "%.3f", cb.swing))
                 MetricRow("· foliation smooth.", String(format: "%.3f", cb.foliationSmoothness))
-                MetricRow("total J",             String(format: "%.3f", cb.total))
+                MetricRow("total J", String(format: "%.3f", cb.total))
 
                 Divider()
                 Text("GeneralizedMap topology").font(.headline)
                 let s = vm.gmapSummary
-                MetricRow("Darts",      "\(s.darts)")
-                MetricRow("Vertices",   "\(s.vertices)")
-                MetricRow("Edges",      "\(s.edges)")
-                MetricRow("Faces",      "\(s.faces)")
-                MetricRow("χ = V−E+F",  "\(s.euler)")
+                MetricRow("Darts", "\(s.darts)")
+                MetricRow("Vertices", "\(s.vertices)")
+                MetricRow("Edges", "\(s.edges)")
+                MetricRow("Faces", "\(s.faces)")
+                MetricRow("χ = V−E+F", "\(s.euler)")
                 MetricRow("Reflective α₂-edges", "\(s.reflectiveEdges)")
                 MetricRow("Involution check", s.valid ? "✓ valid" : "✗ broken")
 
@@ -141,8 +167,10 @@ private struct LabeledControl<Content: View>: View {
     let value: String
     @ViewBuilder var content: () -> Content
 
-    init(_ title: String, value: String,
-         @ViewBuilder content: @escaping () -> Content) {
+    init(
+        _ title: String, value: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
         self.title = title
         self.value = value
         self.content = content

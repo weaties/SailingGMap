@@ -22,7 +22,6 @@
     "NeverUseImplicitlyUnwrappedOptionals": true,
     "NoAccessLevelOnExtensionDeclaration": false,
     "NoBlockComments": false,
-    "Spacing": false,
     "NoLeadingUnderscores": false,
     "OneCasePerLine": true,
     "OneVariableDeclarationPerLine": false,

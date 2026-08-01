@@ -13,6 +13,7 @@
 //                     as a single straight line of slope tan θ.
 //
 
+import SailingCore
 import SwiftUI
 
 struct SailingGMapCanvasView: View {
@@ -26,10 +27,11 @@ struct SailingGMapCanvasView: View {
             let pad: CGFloat = 24
             let drawRect = CGRect(
                 x: pad, y: pad,
-                width: size.width  - 2 * pad,
+                width: size.width - 2 * pad,
                 height: size.height - 2 * pad
             )
-            let title = (mode == .courseFrame)
+            let title =
+                (mode == .courseFrame)
                 ? (vm.useWarpedField
                     ? "Course frame — warped foliation + integrated γ(t)"
                     : "Course frame (s, n) — rhumb-line zig-zag")
@@ -38,7 +40,7 @@ struct SailingGMapCanvasView: View {
 
             switch mode {
             case .courseFrame: drawCourseFrame(ctx, in: drawRect)
-            case .unfolded:    drawUnfolded(ctx, in: drawRect)
+            case .unfolded: drawUnfolded(ctx, in: drawRect)
             }
         }
         .background(Color(nsColor: .textBackgroundColor))
@@ -60,9 +62,10 @@ struct SailingGMapCanvasView: View {
         let nRange = ClosedRange(uncheckedBounds: (-W * 1.05, W * 1.05))
         let sRange = ClosedRange(uncheckedBounds: (-0.02 * L, 1.02 * L))
 
-        let xform = makeTransform(domainX: sRange,
-                                  domainY: nRange,
-                                  range: rect)
+        let xform = makeTransform(
+            domainX: sRange,
+            domainY: nRange,
+            range: rect)
 
         // 1. Band shading using level curves (linear ⇒ rectangles).
         drawBandShading(ctx, xform: xform, halfWidth: W)
@@ -71,8 +74,9 @@ struct SailingGMapCanvasView: View {
         var axisPath = Path()
         axisPath.move(to: xform(.init(x: 0, y: 0)))
         axisPath.addLine(to: xform(.init(x: L, y: 0)))
-        ctx.stroke(axisPath, with: .color(.gray.opacity(0.55)),
-                   style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+        ctx.stroke(
+            axisPath, with: .color(.gray.opacity(0.55)),
+            style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
 
         // 3. Level curves (interior strip boundaries).
         let curves = vm.foliationLevelCurves
@@ -82,8 +86,9 @@ struct SailingGMapCanvasView: View {
                 let q = xform(CGPoint(x: p.x, y: p.y))
                 if i == 0 { path.move(to: q) } else { path.addLine(to: q) }
             }
-            ctx.stroke(path, with: .color(.gray.opacity(0.35)),
-                       style: StrokeStyle(lineWidth: 1))
+            ctx.stroke(
+                path, with: .color(.gray.opacity(0.35)),
+                style: StrokeStyle(lineWidth: 1))
         }
 
         // 4. Rhumb-line zig-zag (always shown as the reference path).
@@ -93,15 +98,18 @@ struct SailingGMapCanvasView: View {
             let p = xform(CGPoint(x: v.x, y: v.y))
             if i == 0 { rhumb.move(to: p) } else { rhumb.addLine(to: p) }
         }
-        let rhumbColor: Color = vm.useWarpedField
+        let rhumbColor: Color =
+            vm.useWarpedField
             ? Color.accentColor.opacity(0.35) : .accentColor
-        ctx.stroke(rhumb, with: .color(rhumbColor),
-                   style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+        ctx.stroke(
+            rhumb, with: .color(rhumbColor),
+            style: StrokeStyle(lineWidth: 2, lineJoin: .round))
 
         for (i, v) in rhumbVerts.enumerated() {
             let p = xform(CGPoint(x: v.x, y: v.y))
             let r = CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)
-            let dotColor: Color = (i == 0 || i == rhumbVerts.count - 1)
+            let dotColor: Color =
+                (i == 0 || i == rhumbVerts.count - 1)
                 ? .orange : rhumbColor
             ctx.fill(Path(ellipseIn: r), with: .color(dotColor))
         }
@@ -114,28 +122,33 @@ struct SailingGMapCanvasView: View {
                 let q = xform(CGPoint(x: p.x, y: p.y))
                 if i == 0 { path.move(to: q) } else { path.addLine(to: q) }
             }
-            ctx.stroke(path, with: .color(.pink),
-                       style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
+            ctx.stroke(
+                path, with: .color(.pink),
+                style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
         }
 
         // 6. Endpoints labels.
         if let a = rhumbVerts.first {
             let p = xform(CGPoint(x: a.x, y: a.y))
-            ctx.draw(Text("A").font(.caption2).bold(),
-                     at: CGPoint(x: p.x - 10, y: p.y), anchor: .trailing)
+            ctx.draw(
+                Text("A").font(.caption2).bold(),
+                at: CGPoint(x: p.x - 10, y: p.y), anchor: .trailing)
         }
         let bWorld = CGPoint(x: L, y: 0)
         let pB = xform(bWorld)
-        ctx.draw(Text("B").font(.caption2).bold(),
-                 at: CGPoint(x: pB.x + 10, y: pB.y), anchor: .leading)
+        ctx.draw(
+            Text("B").font(.caption2).bold(),
+            at: CGPoint(x: pB.x + 10, y: pB.y), anchor: .leading)
     }
 
     /// Shade the alternating bands between consecutive level curves.
     /// For a linear field these collapse to vertical rectangles; for a
     /// warped field they are bowed slabs.
-    private func drawBandShading(_ ctx: GraphicsContext,
-                                 xform: (CGPoint) -> CGPoint,
-                                 halfWidth W: Double) {
+    private func drawBandShading(
+        _ ctx: GraphicsContext,
+        xform: (CGPoint) -> CGPoint,
+        halfWidth W: Double
+    ) {
         let path = vm.generalizedPath
         let field = vm.progressField
         let bandCount = path.tacks.count
@@ -143,9 +156,10 @@ struct SailingGMapCanvasView: View {
         // Boundary at c = 0 is the line s = 0 (the A-edge); boundary at
         // c = 1 is s = L (the B-edge).  Interior boundaries are level
         // curves of `field`.
-        let interior = Foliation.levelCurves(of: field,
-                                             count: bandCount - 1,
-                                             samples: 48)
+        let interior = Foliation.levelCurves(
+            of: field,
+            count: bandCount - 1,
+            samples: 48)
         // Synthesize the two end-curves as straight vertical lines so
         // every band is bounded by two polylines of the same length.
         let nSamples = 48
@@ -162,7 +176,7 @@ struct SailingGMapCanvasView: View {
         boundaries.append(verticalBoundary(at: field.axis.length))
 
         for i in 0..<bandCount {
-            let left  = boundaries[i]
+            let left = boundaries[i]
             let right = boundaries[i + 1]
             var poly = Path()
             // Walk left bottom→top, then right top→bottom.
@@ -176,7 +190,8 @@ struct SailingGMapCanvasView: View {
             }
             poly.closeSubpath()
             let tack = path.tacks[i]
-            let fill: Color = (tack == .starboard)
+            let fill: Color =
+                (tack == .starboard)
                 ? Color.green.opacity(0.07)
                 : Color.red.opacity(0.07)
             ctx.fill(poly, with: .color(fill))
@@ -199,8 +214,9 @@ struct SailingGMapCanvasView: View {
         var ideal = Path()
         ideal.move(to: xform(.init(x: 0, y: 0)))
         ideal.addLine(to: xform(.init(x: last.x, y: last.y)))
-        ctx.stroke(ideal, with: .color(.gray.opacity(0.5)),
-                   style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+        ctx.stroke(
+            ideal, with: .color(.gray.opacity(0.5)),
+            style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
 
         // Polyline of unfolded vertices (should overlay the ideal line).
         var poly = Path()
@@ -208,8 +224,9 @@ struct SailingGMapCanvasView: View {
             let p = xform(CGPoint(x: v.x, y: v.y))
             if i == 0 { poly.move(to: p) } else { poly.addLine(to: p) }
         }
-        ctx.stroke(poly, with: .color(.accentColor),
-                   style: StrokeStyle(lineWidth: 2.5))
+        ctx.stroke(
+            poly, with: .color(.accentColor),
+            style: StrokeStyle(lineWidth: 2.5))
 
         for v in verts {
             let p = xform(CGPoint(x: v.x, y: v.y))
@@ -220,9 +237,10 @@ struct SailingGMapCanvasView: View {
         // Slope label
         let θ = vm.tackingAngleRadians
         let label = String(format: "slope = tan θ = %.3f", tan(θ))
-        ctx.draw(Text(label).font(.caption2).foregroundStyle(.secondary),
-                 at: CGPoint(x: rect.maxX - 8, y: rect.minY + 4),
-                 anchor: .topTrailing)
+        ctx.draw(
+            Text(label).font(.caption2).foregroundStyle(.secondary),
+            at: CGPoint(x: rect.maxX - 8, y: rect.minY + 4),
+            anchor: .topTrailing)
     }
 
     // MARK: - 2D affine map from world rectangle to screen rectangle
@@ -234,10 +252,10 @@ struct SailingGMapCanvasView: View {
     ) -> (CGPoint) -> CGPoint {
         let dx = max(domainX.upperBound - domainX.lowerBound, 1e-9)
         let dy = max(domainY.upperBound - domainY.lowerBound, 1e-9)
-        let sx = range.width  / dx
+        let sx = range.width / dx
         let sy = range.height / dy
         let originX = range.minX
-        let originY = range.maxY              // flip Y (screen y goes down)
+        let originY = range.maxY  // flip Y (screen y goes down)
         let dxLo = domainX.lowerBound
         let dyLo = domainY.lowerBound
         return { p in

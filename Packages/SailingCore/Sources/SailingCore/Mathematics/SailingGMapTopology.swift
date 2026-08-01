@@ -9,9 +9,9 @@ import GeneralizedMap
 
 /// Application data carried by an edge cell representing a seam between
 /// adjacent sailing strips.
-struct SailingSeamMetadata: Equatable {
-    let index: Int
-    let isReflective: Bool
+public struct SailingSeamMetadata: Equatable {
+    public let index: Int
+    public let isReflective: Bool
 }
 
 /// A 2-dimensional generalized-map representation of a `TackPath`.
@@ -20,13 +20,13 @@ struct SailingSeamMetadata: Equatable {
 /// Neighboring right/left boundary edges are sewn through alpha(2). The
 /// resulting 1-cell receives metadata describing whether crossing the seam
 /// reverses the tack orientation.
-struct SailingGMapTopology {
-    typealias Map = GMap3_1_0
+public struct SailingGMapTopology {
+    public typealias Map = GMap3_1_0
 
-    let map: Map
-    let seamRepresentatives: [DartIndex]
+    public let map: Map
+    public let seamRepresentatives: [DartIndex]
 
-    init(path: TackPath) {
+    public init(path: TackPath) {
         let map = Map(ndims: 3)
         let faces = path.strips.map { _ in QuadFace.create(in: map) }
 
@@ -47,15 +47,16 @@ struct SailingGMapTopology {
                     "Adjacent strip boundaries must be alpha(2)-sewable"
                 )
 
-                seams.append((
-                    representative,
-                    SailingSeamMetadata(
-                        index: index,
-                        isReflective:
-                            path.strips[index].tack
-                            != path.strips[index + 1].tack
-                    )
-                ))
+                seams.append(
+                    (
+                        representative,
+                        SailingSeamMetadata(
+                            index: index,
+                            isReflective:
+                                path.strips[index].tack
+                                != path.strips[index + 1].tack
+                        )
+                    ))
             }
         }
 
@@ -84,29 +85,29 @@ struct SailingGMapTopology {
         self.seamRepresentatives = seams.map(\.dart)
     }
 
-    var dartCount: Int {
+    public var dartCount: Int {
         Array(map.allDarts()).count
     }
 
-    var vertexCount: Int {
+    public var vertexCount: Int {
         map.numberCells(dimension: 0)
     }
 
-    var edgeCount: Int {
+    public var edgeCount: Int {
         map.numberCells(dimension: 1)
     }
 
-    var faceCount: Int {
+    public var faceCount: Int {
         map.numberCells(dimension: 2)
     }
 
-    var eulerCharacteristic: Int {
+    public var eulerCharacteristic: Int {
         vertexCount - edgeCount + faceCount
     }
 
     /// The previous Sailing prototype counted the two alpha(2) dart-pairs
     /// belonging to every reflective geometric seam. Preserve that UI metric.
-    var reflectiveAlpha2Edges: Int {
+    public var reflectiveAlpha2Edges: Int {
         seamRepresentatives.reduce(into: 0) { count, dart in
             let metadata: SailingSeamMetadata? = map.attribute(
                 for: dart,
@@ -121,7 +122,7 @@ struct SailingGMapTopology {
     /// Checks the defining generalized-map relations using only public package
     /// operations: every alpha is an involution, and alpha(i)alpha(j) is an
     /// involution whenever the dimensions are non-adjacent.
-    var isValid: Bool {
+    public var isValid: Bool {
         for dart in map.allDarts() {
             for dimension in 0..<map.ndims {
                 let partner = map.getAlpha(of: dart, dimension: dimension)

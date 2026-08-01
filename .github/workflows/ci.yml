@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # macos-26 ships Xcode 26.6 (Swift 6.3.3) as the default — the same toolchain
+  # the project is developed against. Pinned rather than using the default so a
+  # runner-image bump can't silently change the compiler under us.
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  # The fast gate: the entire mathematical core, headless. No app host, no
+  # window server, no simulator. This is the payoff for keeping SailingCore
+  # free of UI imports.
+  test:
+    name: swift test (SailingCore)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Report toolchain
+        run: swift --version && xcodebuild -version
+
+      - name: Bootstrap GeneralizedMap
+        # GeneralizedMap 0.1.0 declares swift-tools-version 6.4, which no
+        # released toolchain can parse. See docs/toolchain.md.
+        run: ./scripts/bootstrap-dependency.sh
+
+      - name: Test
+        run: swift test --package-path Packages/SailingCore
+
+  lint:
+    name: format + lint + layering
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint
+        # scripts/lint.sh runs swift-format --lint, swiftlint --strict, and the
+        # layering invariants that no formatter can express:
+        #   - SailingCore imports no UI framework
+        #   - `import GeneralizedMap` appears in exactly one file
+        run: ./scripts/lint.sh
+
+  build:
+    name: xcodebuild (app)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bootstrap GeneralizedMap
+        run: ./scripts/bootstrap-dependency.sh
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace SailingGMap.xcworkspace \
+            -scheme SailingGMap \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build.log
+
+      - name: Fail on warnings
+        # The project builds clean today. Keep it that way: a warning here is a
+        # regression, not a nuisance. AppIntents emits an unavoidable note about
+        # having no AppIntents.framework dependency, which is excluded.
+        run: |
+          if grep "warning:" build.log | grep -v "AppIntents"; then
+            echo "::error::build produced warnings"
+            exit 1
+          fi
+          echo "no warnings"
+
+  # Guards the rule that this whole repo is organized around: a test suite that
+  # cannot fail is documentation with extra steps. Every property assertion
+  # needs a companion input for which the property is false.
+  negative-controls:
+    name: negative-control coverage
+    runs-on: macos-26
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check new assertions carry a negative control
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch --quiet origin "${{ github.base_ref }}"
+
+          ADDED=$(git diff "$BASE"...HEAD -- 'Packages/SailingCore/Tests/**/*.swift' \
+                  | grep -c '^+.*#expect(' || true)
+          NEGATIVE=$(git diff "$BASE"...HEAD -- 'Packages/SailingCore/Tests/**/*.swift' \
+                  | grep -cE '^\+.*#expect\(!|^\+.*(negative control|NOT |does not|must not)' || true)
+
+          echo "new #expect assertions : $ADDED"
+          echo "negation / control hits: $NEGATIVE"
+
+          if [ "$ADDED" -gt 0 ] && [ "$NEGATIVE" -eq 0 ]; then
+            echo "::error::This PR adds $ADDED assertions but no negative control."
+            echo "::error::See AGENTS.md § 'The falsifiability rule'. A test that"
+            echo "::error::cannot fail is documentation with extra steps."
+            exit 1
+          fi
+          echo "ok"

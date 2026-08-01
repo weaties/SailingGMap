@@ -7,8 +7,8 @@
 //  world frame (x, y) or the course frame (s along AB, n perpendicular).
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 // MARK: - Point2D
 
@@ -112,7 +112,7 @@ public struct Vector2D: Hashable, Codable, Sendable {
 //
 
 public struct CourseAxis: Hashable, Codable {
-    public var origin: Point2D       // point A
+    public var origin: Point2D  // point A
     public var destination: Point2D  // point B
 
     public init(origin: Point2D, destination: Point2D) {
@@ -124,9 +124,9 @@ public struct CourseAxis: Hashable, Codable {
 
     public var length: Double { asVector.magnitude }
 
-    public var u: Vector2D { asVector.normalized() }   // along AB
+    public var u: Vector2D { asVector.normalized() }  // along AB
 
-    public var n: Vector2D { u.perpendicularLeft() }   // left of AB
+    public var n: Vector2D { u.perpendicularLeft() }  // left of AB
 
     /// Convert a world-frame point into course-frame (s, n).
     public func toCourse(_ p: Point2D) -> Point2D {

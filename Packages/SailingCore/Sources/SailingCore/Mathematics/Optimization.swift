@@ -40,9 +40,9 @@ import Foundation
 public struct TackingCost: Hashable, Codable, Sendable {
     public var lengthWeight: Double
     public var turnPenalty: Double
-    public var headingChangeWeight: Double      // μ
+    public var headingChangeWeight: Double  // μ
     public var swingPenalty: Double
-    public var foliationSmoothnessWeight: Double // ν
+    public var foliationSmoothnessWeight: Double  // ν
 
     public init(
         lengthWeight: Double = 1,
@@ -80,13 +80,13 @@ public struct CostBreakdown: Hashable, Codable {
 
 public extension TackingCost {
     func breakdown(_ path: TackPath) -> CostBreakdown {
-        let L     = lengthWeight   * path.sailedLength()
-        let N     = max(0, path.strips.count - 1)
-        let turns = turnPenalty    * Double(N)
+        let L = lengthWeight * path.sailedLength()
+        let N = max(0, path.strips.count - 1)
+        let turns = turnPenalty * Double(N)
         // For the rhumb-line case |Δθᵢ| = 2θ at every reversal.
-        let dθ    = 2 * path.tackingAngle
-        let head  = headingChangeWeight * Double(N) * dθ * dθ
-        let swing = swingPenalty   * path.crossTrackPeak()
+        let dθ = 2 * path.tackingAngle
+        let head = headingChangeWeight * Double(N) * dθ * dθ
+        let swing = swingPenalty * path.crossTrackPeak()
         return CostBreakdown(
             length: L, turns: turns,
             headingChange: head, swing: swing,
@@ -104,13 +104,13 @@ public extension TackingCost {
         _ path: GeneralizedTackPath,
         field: ProgressField
     ) -> CostBreakdown {
-        let L      = lengthWeight  * path.sailedLength()
-        let N      = max(0, path.tacks.count - 1)
-        let turns  = turnPenalty   * Double(N)
-        let dθs    = path.headingChangesAtTurns()
-        let head   = headingChangeWeight * dθs.reduce(0) { $0 + $1 * $1 }
-        let swing  = swingPenalty  * path.crossTrackPeak()
-        let fol    = foliationSmoothnessWeight * field.laplacianL2Squared()
+        let L = lengthWeight * path.sailedLength()
+        let N = max(0, path.tacks.count - 1)
+        let turns = turnPenalty * Double(N)
+        let dθs = path.headingChangesAtTurns()
+        let head = headingChangeWeight * dθs.reduce(0) { $0 + $1 * $1 }
+        let swing = swingPenalty * path.crossTrackPeak()
+        let fol = foliationSmoothnessWeight * field.laplacianL2Squared()
         return CostBreakdown(
             length: L, turns: turns,
             headingChange: head, swing: swing,
@@ -118,8 +118,10 @@ public extension TackingCost {
         )
     }
 
-    func evaluate(_ path: GeneralizedTackPath,
-                  field: ProgressField) -> Double {
+    func evaluate(
+        _ path: GeneralizedTackPath,
+        field: ProgressField
+    ) -> Double {
         breakdown(path, field: field).total
     }
 }
