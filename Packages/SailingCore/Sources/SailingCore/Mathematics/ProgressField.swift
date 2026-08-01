@@ -124,13 +124,24 @@ public struct LinearProgressField: ProgressField, Hashable, Codable {
 ///   s(p)  =  s_coord / L
 ///          + amp · exp( − ((s − s₀)² + (n − n₀)²) / (2 σ²) ).
 ///
-/// The bump bends level curves around (s₀, n₀).  Monotonicity ∂s/∂s > 0
-/// is preserved as long as
+/// The bump bends level curves around (s₀, n₀).  Monotonicity ∂s/∂s > 0 is
+/// preserved as long as the bump's steepest descent stays below the linear
+/// gradient 1/L:
 ///
-///   |amp| / σ²  <  1 / L
+///   |amp| / (σ·√e)  <  1 / L
 ///
-/// (the maximum |∂ψ/∂s| of the bump must stay below the linear gradient
-/// 1/L).  `isMonotonic` will detect a violation point-wise.
+/// The maximum of |∂ψ/∂s| is attained at |s − s₀| = σ, **not** at the centre:
+///
+///   ∂ψ/∂s = −a · (s−s₀)/σ² · exp(−r²/2σ²)
+///   max |∂ψ/∂s| = |a| / (σ·√e)
+///
+/// > Corrected in issue #13. This was previously documented as `|a|/σ² < 1/L`,
+/// > which under-reports the slope by a factor of σ/√e — an order of magnitude
+/// > for typical σ. It classified `a=0.30, σ=8` as safe when that configuration
+/// > measurably breaks monotonicity on 2.25% of a 200×100 grid.
+///
+/// See ``maximumBumpSlope`` and ``isMonotonic``; `Foliation.monotonicityViolations`
+/// still checks point-wise, and the two must agree.
 public struct WarpedProgressField: ProgressField, Hashable, Codable {
     public var axis: CourseAxis
     public var halfWidth: Double
@@ -163,6 +174,29 @@ public struct WarpedProgressField: ProgressField, Hashable, Codable {
     }
 
     private var s0: Double { sCenterFraction * axis.length }
+
+    /// The steepest along-course descent the bump contributes, `|a| / (σ·√e)`,
+    /// attained at `|s − s₀| = σ`.
+    ///
+    /// Exposed so the monotonicity criterion is executable rather than a claim
+    /// in a comment — the distinction this repo exists to enforce.
+    public var maximumBumpSlope: Double {
+        guard sigma > 0 else { return .infinity }
+        return abs(amplitude) / (sigma * Self.sqrtE)
+    }
+
+    /// √e — the factor the superseded bound omitted.
+    private static let sqrtE = exp(0.5)
+
+    /// Whether the field is monotonic in the along-course direction everywhere.
+    ///
+    /// `true` iff ``maximumBumpSlope`` stays under the linear gradient `1/L`.
+    /// Agrees with `Foliation.monotonicityViolations(of:) == 0`; a
+    /// disagreement between the two means one of them is wrong and is a bug.
+    public var isMonotonic: Bool {
+        guard axis.length > 0 else { return false }
+        return maximumBumpSlope < 1 / axis.length
+    }
 
     private func bumpKernel(sCoord: Double, nCoord: Double) -> Double {
         let ds = sCoord - s0
