@@ -8,7 +8,7 @@ import SwiftUI
 
 struct ControlsView: View {
     @ObservedObject var vm: SailingGMapViewModel
-    @State private var optimResult: (count: Int, cost: Double)? = nil
+    @State private var optimResult: (count: Int, cost: Double)?
 
     var body: some View {
         ScrollView {

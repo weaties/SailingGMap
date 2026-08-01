@@ -94,7 +94,11 @@ public enum Unfolding {
     public static func cumulativeIsometries(
         of path: TackPath
     ) -> [PlanarIsometry] {
-        var Φ: [PlanarIsometry] = [.identity]
+        // Tracked as a running value rather than re-reading `Φ.last!`: the
+        // array is never empty, but expressing that with a force unwrap makes
+        // the invariant implicit and trips force_unwrapping.
+        var current: PlanarIsometry = .identity
+        var Φ: [PlanarIsometry] = [current]
         let tanθ = tan(path.tackingAngle)
         var n: Double = 0
         var σ_prev: Double = path.strips.first?.tack.sign ?? 1
@@ -104,10 +108,9 @@ public enum Unfolding {
             // across the current n.
             if σ != σ_prev {
                 let H = PlanarIsometry.reflectionAcrossHorizontal(b: n)
-                Φ.append(H.compose(Φ.last!))
-            } else {
-                Φ.append(Φ.last!)
+                current = H.compose(current)
             }
+            Φ.append(current)
             n += σ * strip.width * tanθ
             σ_prev = σ
         }
@@ -119,9 +122,9 @@ public enum Unfolding {
         _ unfolded: [Point2D],
         tol: Double = 1e-9
     ) -> Bool {
-        guard unfolded.count >= 3 else { return true }
-        let p0 = unfolded.first!
-        let pN = unfolded.last!
+        guard unfolded.count >= 3, let p0 = unfolded.first, let pN = unfolded.last else {
+            return true
+        }
         let v = pN - p0
         let L = v.magnitude
         guard L > tol else { return unfolded.allSatisfy { ($0 - p0).magnitude < tol } }

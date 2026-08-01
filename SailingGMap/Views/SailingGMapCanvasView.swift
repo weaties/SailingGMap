@@ -55,6 +55,11 @@ struct SailingGMapCanvasView: View {
         )
     }
 
+    // Six numbered drawing steps in painter's order (shading, axis, level
+    // curves, zig-zag, trajectory, labels). Splitting them into six private
+    // helpers would thread `ctx` and `xform` through every one and make the
+    // paint order harder to see, not easier — the layering is the logic here.
+    // swiftlint:disable:next function_body_length
     private func drawCourseFrame(_ ctx: GraphicsContext, in rect: CGRect) {
         let L = vm.courseLength
         let W = vm.halfWidth

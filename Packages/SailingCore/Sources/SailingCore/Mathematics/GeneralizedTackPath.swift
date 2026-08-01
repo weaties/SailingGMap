@@ -167,7 +167,7 @@ public struct GeneralizedTackPath {
         var result: [Double] = []
         let pts = integrateInCourseFrame()
         guard pts.count >= 3 else { return [] }
-        var prevHeading: Vector2D? = nil
+        var prevHeading: Vector2D?
         var prevBand = bandIndex(forProgress: 0)
         for i in 1..<pts.count {
             let s = field.value(sCoord: pts[i].x, nCoord: pts[i].y)
