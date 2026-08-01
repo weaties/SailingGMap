@@ -215,22 +215,56 @@ public struct GeneralizedTackPath {
 
     // MARK: - Metrics
 
+    /// Everything derivable from one integration, computed from one integration.
+    ///
+    /// `sailedLength()`, `crossTrackPeak()` and `headingChangesAtTurns()` each
+    /// integrate independently, so asking for all three — which is exactly what
+    /// a cost breakdown does — integrated the trajectory three times. Callers
+    /// that need more than one metric should ask for this instead (issue #18).
+    public struct TrajectoryMetrics: Sendable {
+        public let points: [Point2D]
+        public let termination: Termination
+        public let sailedLength: Double
+        public let crossTrackPeak: Double
+        public let headingChanges: [Double]
+
+        public var arrived: Bool { termination == .arrived }
+    }
+
+    /// Integrate once and derive every metric from that single trajectory.
+    public func metrics(
+        stepLength dℓ: Double? = nil,
+        maxSteps: Int = 32768
+    ) -> TrajectoryMetrics {
+        let result = integrate(stepLength: dℓ, maxSteps: maxSteps)
+        let pts = result.points
+
+        var length = 0.0
+        var peak = 0.0
+        for (i, p) in pts.enumerated() {
+            peak = max(peak, abs(p.y))
+            if i > 0 { length += (p - pts[i - 1]).magnitude }
+        }
+
+        return TrajectoryMetrics(
+            points: pts,
+            termination: result.termination,
+            sailedLength: length,
+            crossTrackPeak: peak,
+            headingChanges: Self.headingChanges(in: pts, of: self)
+        )
+    }
+
     /// Sailed arclength.  Equals dℓ · (N_steps − 1) when the integrator
     /// terminates at the right step length; we recompute it from the
     /// returned polyline for robustness.
     public func sailedLength() -> Double {
-        let pts = integrateInCourseFrame()
-        guard pts.count >= 2 else { return 0 }
-        var L: Double = 0
-        for i in 1..<pts.count {
-            L += (pts[i] - pts[i - 1]).magnitude
-        }
-        return L
+        metrics().sailedLength
     }
 
     /// Maximum cross-track excursion |n|ₘₐₓ along the trajectory.
     public func crossTrackPeak() -> Double {
-        integrateInCourseFrame().map { abs($0.y) }.max() ?? 0
+        metrics().crossTrackPeak
     }
 
     /// Sequence of heading-change magnitudes at each tack reversal.
@@ -250,18 +284,28 @@ public struct GeneralizedTackPath {
     /// reversal, with the correct count, silently zeroing the
     /// `headingChangeWeight` cost term.
     public func headingChangesAtTurns() -> [Double] {
-        let pts = integrateInCourseFrame()
+        metrics().headingChanges
+    }
+
+    /// Turn detection over an already-integrated trajectory.
+    ///
+    /// Segment `i` runs `pts[i] → pts[i+1]` and was generated using the band at
+    /// **`pts[i]`** — the point the step departed from. A reversal between
+    /// segments `i−1` and `i` therefore appears as a band change between
+    /// `pts[i−1]` and `pts[i]`, and the turn is the angle between those two
+    /// segments (issue #11).
+    static func headingChanges(in pts: [Point2D], of path: GeneralizedTackPath) -> [Double] {
         guard pts.count >= 3 else { return [] }
 
         var result: [Double] = []
-        var band = bandIndex(
-            forProgress: field.value(sCoord: pts[0].x, nCoord: pts[0].y))
+        var band = path.bandIndex(
+            forProgress: path.field.value(sCoord: pts[0].x, nCoord: pts[0].y))
 
         // Stop at count−1: the final point has no outgoing segment, so a
         // crossing detected there has no post-turn heading to compare against.
         for i in 1..<(pts.count - 1) {
-            let next = bandIndex(
-                forProgress: field.value(sCoord: pts[i].x, nCoord: pts[i].y),
+            let next = path.bandIndex(
+                forProgress: path.field.value(sCoord: pts[i].x, nCoord: pts[i].y),
                 hint: band)
             guard next != band else { continue }
 

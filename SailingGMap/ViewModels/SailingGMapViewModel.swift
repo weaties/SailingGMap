@@ -156,17 +156,82 @@ final class SailingGMapViewModel: ObservableObject {
 
     /// Level curves of the active progress field — interior boundaries
     /// only (excludes c = 0 and c = 1 which coincide with A and B).
+    ///
+    /// Cached: SwiftUI calls `body` far more often than any input changes, and
+    /// this is bisection-heavy (issue #18). `drawBandShading` reads this rather
+    /// than recomputing the identical curves a second time per frame.
     var foliationLevelCurves: [[Point2D]] {
-        Foliation.levelCurves(
-            of: progressField,
-            count: stripCount - 1,
-            samples: 48
-        )
+        Self.levelCurveCache.value(for: fieldCacheKey) {
+            Foliation.levelCurves(of: progressField, count: stripCount - 1, samples: 48)
+        }
+    }
+
+    /// Every metric derivable from the integrated trajectory, from **one**
+    /// integration and cached across redraws.
+    var trajectoryMetrics: GeneralizedTackPath.TrajectoryMetrics {
+        Self.metricsCache.value(for: fieldCacheKey) { generalizedPath.metrics() }
     }
 
     /// Integrated trajectory γ(t) on the generalised path, in course frame.
-    var integratedTrajectoryCourse: [Point2D] {
-        generalizedPath.integrateInCourseFrame()
+    var integratedTrajectoryCourse: [Point2D] { trajectoryMetrics.points }
+
+    /// Whether the integrated trajectory actually reached B. A strongly warped
+    /// field can stall at half the course; before #14 the canvas drew that
+    /// truncated path with no indication anything was wrong.
+    var trajectoryArrived: Bool { trajectoryMetrics.arrived }
+
+    // MARK: - Caching
+    //
+    // Everything derived is a function of these inputs. One key covers them
+    // all: a change to any of them invalidates every cached product, and
+    // nothing else can.
+
+    private struct FieldCacheKey: Hashable {
+        let stripCount: Int
+        let tackingAngle: Double
+        let courseLength: Double
+        let useWarped: Bool
+        let amplitude: Double
+        let sigma: Double
+        let centerFraction: Double
+    }
+
+    private var fieldCacheKey: FieldCacheKey {
+        FieldCacheKey(
+            stripCount: stripCount,
+            tackingAngle: tackingAngleRadians,
+            courseLength: courseLength,
+            useWarped: useWarpedField,
+            amplitude: bumpAmplitude,
+            sigma: bumpSigma,
+            centerFraction: bumpCenterFraction
+        )
+    }
+
+    /// Single-entry memo. The access pattern is "same key many times in a row,
+    /// then a new key forever", so one slot is the right size — an unbounded
+    /// dictionary would just leak every slider position the user passed through.
+    @MainActor
+    final class Memo<Key: Hashable, Value> {
+        private var key: Key?
+        private var stored: Value?
+
+        func value(for key: Key, compute: () -> Value) -> Value {
+            if key == self.key, let stored { return stored }
+            let fresh = compute()
+            self.key = key
+            self.stored = fresh
+            return fresh
+        }
+    }
+
+    private static let levelCurveCache = Memo<FieldCacheKey, [[Point2D]]>()
+    private static let metricsCache = Memo<FieldCacheKey, GeneralizedTackPath.TrajectoryMetrics>()
+    private static let topologyCache = Memo<TopologyCacheKey, GMapSummary>()
+
+    private struct TopologyCacheKey: Hashable {
+        let stripCount: Int
+        let startingTack: Tack
     }
 
     // MARK: - Metrics
@@ -206,9 +271,16 @@ final class SailingGMapViewModel: ObservableObject {
         let reflectiveEdges: Int
     }
 
+    /// Cached: the G-map depends only on the strip count and tack sequence, and
+    /// rebuilding it dominated redraw cost at 3.4 ms (issue #18).
     var gmapSummary: GMapSummary {
-        let topology = SailingGMapTopology(path: rhumbPath)
-        return GMapSummary(
+        Self.topologyCache.value(
+            for: TopologyCacheKey(stripCount: stripCount, startingTack: .starboard)
+        ) { Self.summarise(SailingGMapTopology(path: rhumbPath)) }
+    }
+
+    private static func summarise(_ topology: SailingGMapTopology) -> GMapSummary {
+        GMapSummary(
             darts: topology.dartCount,
             vertices: topology.vertexCount,
             edges: topology.edgeCount,
