@@ -89,12 +89,78 @@ public struct GeneralizedTackPath {
     /// `maxSteps` to guard against pathological fields.
     ///
     /// Returns the trajectory in **course-frame** coordinates (s, n).
+    ///
+    /// Prefer ``integrate(stepLength:maxSteps:)`` when the caller needs to know
+    /// whether the trajectory actually arrived — this accessor cannot say.
     public func integrateInCourseFrame(
         stepLength dℓ: Double? = nil,
-        maxSteps: Int = 8192
+        maxSteps: Int = 32768
     ) -> [Point2D] {
+        integrate(stepLength: dℓ, maxSteps: maxSteps).points
+    }
+
+    /// Why an integration stopped.
+    ///
+    /// Without this the caller cannot distinguish a completed trajectory from
+    /// an abandoned one: both come back as a list of points. A sufficiently
+    /// warped field stalls at roughly half the course and the UI drew it as
+    /// though it were real (issue #14).
+    public enum Termination: Hashable, Sendable {
+        /// Reached `s ≥ 1` — the trajectory got to B.
+        case arrived
+        /// `|∇s|` collapsed, so no heading could be formed. Stopping is the
+        /// correct behavior; continuing would emit NaN.
+        case stalled
+        /// Ran out of steps before arriving. The points are a prefix of a
+        /// trajectory, not a trajectory.
+        case exceededStepBudget
+    }
+
+    /// A trajectory together with the reason integration stopped.
+    public struct IntegrationResult: Sendable {
+        public let points: [Point2D]
+        public let termination: Termination
+
+        public var arrived: Bool { termination == .arrived }
+
+        public init(points: [Point2D], termination: Termination) {
+            self.points = points
+            self.termination = termination
+        }
+    }
+
+    /// Default step length as a fraction of the course length.
+    ///
+    /// Measured arrival error on a linear field, 8 bands, θ = 45° (issue #14):
+    ///
+    /// | step | distance from B | ratio to previous |
+    /// |---|---|---|
+    /// | `L/128` | 0.542 | — |
+    /// | `L/256` | 0.383 | 0.71 |
+    /// | `L/512` | **0.433** | **1.13 — increases** |
+    /// | `L/1024` | 0.090 | 0.21 |
+    /// | `L/2048` | 0.042 | 0.46 |
+    /// | `L/4096` | 0.018 | 0.44 |
+    ///
+    /// The error is *non-monotone* in the coarse regime: each band boundary is
+    /// crossed late by a fraction of a step, and that fraction beats against
+    /// the step size rather than shrinking with it. Only once many steps fall
+    /// within each band does the O(h) term dominate and halving the step halve
+    /// the error.
+    ///
+    /// The previous default of `L/512` sat squarely in the non-convergent
+    /// regime, so refining it could make the answer *worse*. `L/2048` is in the
+    /// asymptotic regime with ~0.04% arrival error, at a few thousand steps —
+    /// still well under a millisecond.
+    public static let defaultStepDivisor = 2048
+
+    /// Integrate the heading field from A, reporting why it stopped.
+    public func integrate(
+        stepLength dℓ: Double? = nil,
+        maxSteps: Int = 32768
+    ) -> IntegrationResult {
         let L = field.axis.length
-        let dℓEff = dℓ ?? (L / 512)
+        let dℓEff = dℓ ?? (L / Double(Self.defaultStepDivisor))
         let cosθ = cos(tackingAngle)
         let sinθ = sin(tackingAngle)
 
@@ -103,12 +169,16 @@ public struct GeneralizedTackPath {
 
         var p = Point2D(x: 0, y: 0)
         var bandIdx = bandIndex(forProgress: 0)
+        var termination = Termination.exceededStepBudget
 
         for _ in 0..<maxSteps {
             let σ = tacks[bandIdx].sign
             let grad = field.gradient(sCoord: p.x, nCoord: p.y)
             let mag = grad.magnitude
-            guard mag > 1e-12 else { break }
+            guard mag > 1e-12 else {
+                termination = .stalled
+                break
+            }
             let û = (1 / mag) * grad
             let n̂ = û.perpendicularLeft()
             let h = cosθ * û + (σ * sinθ) * n̂
@@ -120,11 +190,14 @@ public struct GeneralizedTackPath {
             p = next
 
             let s = field.value(sCoord: p.x, nCoord: p.y)
-            if s >= 1.0 { break }
+            if s >= 1.0 {
+                termination = .arrived
+                break
+            }
             // Update band membership.
             bandIdx = bandIndex(forProgress: s, hint: bandIdx)
         }
-        return pts
+        return IntegrationResult(points: pts, termination: termination)
     }
 
     /// Same trajectory, lifted to the world frame.

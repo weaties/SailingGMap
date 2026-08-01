@@ -17,6 +17,7 @@ correct implementation from one that ignores its input — see `AGENTS.md`
 | **I5** | Strip chain is a topological disk: `χ = V − E + F = 1` | every `N`: darts `8N`, V `2(N+1)`, E `3N+1`, F `N` | a torn/unsewn chain ⟹ `χ ≠ 1` | exact (integers) |
 | **I6** | Warped field is monotonic ⟺ `\|a\| / (σ·√e) < 1/L` | `a=0.12, σ=18` ⟹ 0 violations | `a=0.30, σ=8` ⟹ **> 0** violations | exact (counted) |
 | **I7** | Integration reports its termination reason | linear field ⟹ `.arrived` within `1e-3·L` | `a=0.30, σ=8` ⟹ `.exceededStepBudget`, not a silent truncation | rel `1e-3` |
+| **I7b** | Arrival error is O(h) **in the asymptotic regime only** | `L/1024 → L/2048 → L/4096` each halve the error | between `L/256` and `L/512` the error **increases** | ratio < 0.6 |
 | **I8** | Cost terms have the documented `N`-dependence | `(N−1)` grows, `max\|n\|` shrinks, interior optimum exists | `∫\|Δs\|²dA` is **constant** in `N` — cannot move the argmin | rel `1e-9` |
 
 ## Detail
@@ -89,18 +90,37 @@ Reference data (200×100 grid, `L = 100`):
 The correct bound classifies all five rows; `|a|/σ²` classifies none of the
 failures. Use this table directly as parameterized test data.
 
-### I7 — Integration termination
+Exposed as `WarpedProgressField.maximumBumpSlope` and `.isMonotonic` so the
+criterion is executable rather than a claim in a comment.
 
-Forward Euler, fixed step, band switching detected at step boundaries. Two
-failure modes the API must expose rather than hide:
+### I7 — Integration termination and convergence
 
-1. **Late switching** — tack flips up to one step after the true crossing.
-   Measured drift: `(100.127, −0.414)` for a nominal `(100, 0)`.
-2. **Non-arrival** — a warped field can stall the trajectory; it hits
-   `maxSteps` and returns a truncated path. Measured: `a=0.30, σ=8` stops at
-   `s_coord ≈ 52` of 100.
+Forward Euler, fixed step, band switching detected at step boundaries. The API
+must expose which of three things happened — `.arrived`, `.stalled`,
+`.exceededStepBudget` — because all three otherwise return an indistinguishable
+list of points.
 
-A caller must be able to distinguish "arrived" from "gave up".
+Measured non-arrival: `a = 0.30, σ = 8` stops at `s_coord ≈ 52` of 100.
+
+**Convergence is not monotone at coarse steps.** Linear field, 8 bands, θ = 45°:
+
+| step | distance from B | ratio |
+|---|---|---|
+| `L/128` | 0.542 | — |
+| `L/256` | 0.383 | 0.71 |
+| `L/512` | **0.433** | **1.13 — increases** |
+| `L/1024` | 0.090 | 0.21 |
+| `L/2048` | 0.042 | 0.46 |
+| `L/4096` | 0.018 | 0.44 |
+
+Each band boundary is crossed late by a fraction of a step, and that fraction
+beats against the step size rather than shrinking with it. Only once many steps
+fall inside each band does the O(h) term dominate.
+
+Consequence: the original default of `L/512` sat in the non-convergent regime,
+where refining the step could make the answer *worse*. The default is now
+`L/2048` (~0.04% arrival error). Any convergence assertion must use divisors
+≥ 1024; asserting it below that fails against a perfectly correct integrator.
 
 ### I8 — Cost-term behavior
 
