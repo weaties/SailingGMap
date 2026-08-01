@@ -57,7 +57,21 @@ identifier_name:
   min_length: 1               # θ, σ, u, n, L, w are the domain's own names
   max_length: 50
   allowed_symbols: ["_"]
-  validates_start_with_lowercase: false   # Φ, Δ are legitimate here
+  # Quoted deliberately: bare `off` is parsed by YAML as the boolean false,
+  # which SwiftLint rejects as a malformed severity.
+  validates_start_with_lowercase: "off"
+  excluded:
+    # Single capitals carrying the standard meaning from the derivations in
+    # README.md and docs/invariants.md. Renaming these to satisfy a linter
+    # would make the code stop matching the mathematics it implements.
+    - A                       # start point
+    - B                       # destination
+    - J                       # cost functional
+    - L                       # course length
+    - N                       # strip / band count
+    - W                       # cross-track half-width
+    - H                       # reflection isometry
+    - Φ                       # cumulative isometry
 
 type_name:
   min_length: 3

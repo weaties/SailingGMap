@@ -44,10 +44,12 @@ public struct GeneralizedTackPath {
     ) {
         precondition(tacks.count >= 1)
         precondition(bandBoundaries.count == tacks.count + 1)
-        precondition(bandBoundaries.first.map { abs($0) < 1e-9 } ?? false,
-                     "First boundary must be 0")
-        precondition(bandBoundaries.last.map { abs($0 - 1) < 1e-9 } ?? false,
-                     "Last boundary must be 1")
+        precondition(
+            bandBoundaries.first.map { abs($0) < 1e-9 } ?? false,
+            "First boundary must be 0")
+        precondition(
+            bandBoundaries.last.map { abs($0 - 1) < 1e-9 } ?? false,
+            "Last boundary must be 1")
         self.field = field
         self.tacks = tacks
         self.bandBoundaries = bandBoundaries
@@ -111,8 +113,9 @@ public struct GeneralizedTackPath {
             let n̂ = û.perpendicularLeft()
             let h = cosθ * û + (σ * sinθ) * n̂
             // |h| ≡ 1, so the arclength step is just dℓEff · h.
-            let next = Point2D(x: p.x + dℓEff * h.dx,
-                               y: p.y + dℓEff * h.dy)
+            let next = Point2D(
+                x: p.x + dℓEff * h.dx,
+                y: p.y + dℓEff * h.dy)
             pts.append(next)
             p = next
 
@@ -129,8 +132,9 @@ public struct GeneralizedTackPath {
         stepLength dℓ: Double? = nil,
         maxSteps: Int = 8192
     ) -> [Point2D] {
-        let coursePts = integrateInCourseFrame(stepLength: dℓ,
-                                               maxSteps: maxSteps)
+        let coursePts = integrateInCourseFrame(
+            stepLength: dℓ,
+            maxSteps: maxSteps)
         return coursePts.map {
             field.axis.fromCourse(s: $0.x, n: $0.y)
         }
@@ -163,7 +167,7 @@ public struct GeneralizedTackPath {
         var result: [Double] = []
         let pts = integrateInCourseFrame()
         guard pts.count >= 3 else { return [] }
-        var prevHeading: Vector2D? = nil
+        var prevHeading: Vector2D?
         var prevBand = bandIndex(forProgress: 0)
         for i in 1..<pts.count {
             let s = field.value(sCoord: pts[i].x, nCoord: pts[i].y)
@@ -171,8 +175,13 @@ public struct GeneralizedTackPath {
             let v = pts[i] - pts[i - 1]
             if band != prevBand {
                 if let ph = prevHeading {
-                    let cosΔ = max(-1, min(1, Vector2D.dot(ph.normalized(),
-                                                            v.normalized())))
+                    let cosΔ = max(
+                        -1,
+                        min(
+                            1,
+                            Vector2D.dot(
+                                ph.normalized(),
+                                v.normalized())))
                     result.append(acos(cosΔ))
                 }
                 prevBand = band
@@ -193,7 +202,7 @@ public struct GeneralizedTackPath {
         // Walk forward from `hint`.
         var i = max(0, min(hint, last))
         while i < last && s > bandBoundaries[i + 1] { i += 1 }
-        while i > 0    && s < bandBoundaries[i]     { i -= 1 }
+        while i > 0 && s < bandBoundaries[i] { i -= 1 }
         return i
     }
 }

@@ -3,6 +3,7 @@
 //  Sailing
 //
 
+import SailingCore
 import SwiftUI
 
 struct ContentView: View {

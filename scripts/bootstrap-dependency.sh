@@ -20,6 +20,9 @@ DEP_NAME="GeneralizedMap"
 DEP_TAG="0.1.0"
 DEP_URL="https://github.com/SinanKarasu/${DEP_NAME}.git"
 TARGET_TOOLS_VERSION="6.3"
+# Must satisfy the `from: "0.1.0"` requirement in Packages/SailingCore/Package.swift
+# and sort above the real 0.1.0 so SwiftPM prefers it.
+PATCHED_TAG="0.1.1"
 
 # The checkout directory MUST be named exactly `GeneralizedMap`: Xcode matches a
 # workspace-local package to the remote reference it shadows by *package name*,
@@ -54,16 +57,30 @@ git -C "$DEP_DIR" checkout --quiet --detach "refs/tags/${DEP_TAG}"
 # --- 2. patch the manifest ---------------------------------------------------
 
 MANIFEST="$DEP_DIR/Package.swift"
-CURRENT="$(head -1 "$MANIFEST" | sed -E 's|// *swift-tools-version: *||')"
 
-if [ "$CURRENT" = "$TARGET_TOOLS_VERSION" ]; then
-  log "Manifest already at ${TARGET_TOOLS_VERSION}"
-else
-  log "Rewriting manifest tools-version ${CURRENT} -> ${TARGET_TOOLS_VERSION}"
-  # Only the first line; the rest of the manifest is untouched.
-  sed -i.bak -E "1s|// *swift-tools-version: *.*|// swift-tools-version: ${TARGET_TOOLS_VERSION}|" "$MANIFEST"
-  rm -f "${MANIFEST}.bak"
+log "Rewriting manifest tools-version -> ${TARGET_TOOLS_VERSION}"
+# Only the first line; the rest of the manifest is untouched.
+sed -i.bak -E "1s|// *swift-tools-version: *.*|// swift-tools-version: ${TARGET_TOOLS_VERSION}|" "$MANIFEST"
+rm -f "${MANIFEST}.bak"
+
+# --- 2b. commit and tag ------------------------------------------------------
+#
+# SwiftPM resolves a versioned dependency by checking out a *tag*, so patching
+# the working tree alone is not enough — the tag still carries the 6.4 manifest
+# and resolution fails exactly as before. We therefore commit the patch and tag
+# it ${PATCHED_TAG}, which satisfies the `from: "0.1.0"` requirement while
+# carrying a manifest the installed toolchain can parse.
+#
+# This tag is local-only and never pushed. It disappears when the upstream
+# package is retagged and this script is deleted.
+
+if ! git -C "$DEP_DIR" diff --quiet -- Package.swift; then
+  git -C "$DEP_DIR" -c user.name="bootstrap" -c user.email="bootstrap@local" \
+    commit --quiet -m "local: swift-tools-version ${TARGET_TOOLS_VERSION} (see SailingGMap docs/toolchain.md)" \
+    -- Package.swift
 fi
+git -C "$DEP_DIR" tag -f "$PATCHED_TAG" >/dev/null
+log "Tagged patched manifest as ${PATCHED_TAG} (local only, never pushed)"
 
 # --- 3. workspace ------------------------------------------------------------
 #

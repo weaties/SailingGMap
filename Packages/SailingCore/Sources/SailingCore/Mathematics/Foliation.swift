@@ -60,7 +60,7 @@ public enum Foliation {
     ) -> Double {
         let L = field.axis.length
         var lo: Double = -0.5 * L
-        var hi: Double =  1.5 * L
+        var hi: Double = 1.5 * L
         var fLo = field.value(sCoord: lo, nCoord: n) - c
         var fHi = field.value(sCoord: hi, nCoord: n) - c
 

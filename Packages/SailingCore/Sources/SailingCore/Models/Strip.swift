@@ -14,10 +14,10 @@
 import Foundation
 
 public struct Strip: Hashable, Codable, Identifiable {
-    public var id: Int          // index along the course
-    public var sStart: Double   // arc-length at the leading boundary
-    public var sEnd: Double     // arc-length at the trailing boundary
-    public var tack: Tack       // discrete control state (±1)
+    public var id: Int  // index along the course
+    public var sStart: Double  // arc-length at the leading boundary
+    public var sEnd: Double  // arc-length at the trailing boundary
+    public var tack: Tack  // discrete control state (±1)
 
     public init(id: Int, sStart: Double, sEnd: Double, tack: Tack) {
         precondition(sEnd >= sStart, "Strip must have non-negative width")

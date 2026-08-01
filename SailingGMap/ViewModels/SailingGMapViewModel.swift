@@ -3,9 +3,10 @@
 //  Sailing
 //
 
-import Foundation
-import SwiftUI
 import Combine
+import Foundation
+import SailingCore
+import SwiftUI
 
 @MainActor
 final class SailingGMapViewModel: ObservableObject {
@@ -48,8 +49,7 @@ final class SailingGMapViewModel: ObservableObject {
     /// Visible half-width of the corridor in the course frame.  Chosen to
     /// comfortably contain the rhumb-line zig-zag's cross-track peak.
     var halfWidth: Double {
-        let peak = (courseLength / Double(max(stripCount, 2))) *
-                    tan(tackingAngleRadians)
+        let peak = (courseLength / Double(max(stripCount, 2))) * tan(tackingAngleRadians)
         return max(20, peak * 2.2)
     }
 
@@ -57,18 +57,20 @@ final class SailingGMapViewModel: ObservableObject {
     /// bump deformation).
     var progressField: AnyProgressField {
         if useWarpedField {
-            return AnyProgressField(WarpedProgressField(
-                axis: axis,
-                halfWidth: halfWidth,
-                amplitude: bumpAmplitude,
-                sigma: bumpSigma,
-                sCenterFraction: bumpCenterFraction,
-                nCenter: 0
-            ))
+            return AnyProgressField(
+                WarpedProgressField(
+                    axis: axis,
+                    halfWidth: halfWidth,
+                    amplitude: bumpAmplitude,
+                    sigma: bumpSigma,
+                    sCenterFraction: bumpCenterFraction,
+                    nCenter: 0
+                ))
         } else {
-            return AnyProgressField(LinearProgressField(
-                axis: axis, halfWidth: halfWidth
-            ))
+            return AnyProgressField(
+                LinearProgressField(
+                    axis: axis, halfWidth: halfWidth
+                ))
         }
     }
 

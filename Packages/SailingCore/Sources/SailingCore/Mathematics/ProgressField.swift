@@ -205,15 +205,15 @@ public struct AnyProgressField: ProgressField {
     public let axis: CourseAxis
     public let halfWidth: Double
     private let _value: (Double, Double) -> Double
-    private let _grad:  (Double, Double) -> Vector2D
-    private let _lap:   (Double, Double) -> Double
+    private let _grad: (Double, Double) -> Vector2D
+    private let _lap: (Double, Double) -> Double
 
     public init<F: ProgressField>(_ field: F) {
         self.axis = field.axis
         self.halfWidth = field.halfWidth
         self._value = field.value(sCoord:nCoord:)
-        self._grad  = field.gradient(sCoord:nCoord:)
-        self._lap   = field.laplacian(sCoord:nCoord:)
+        self._grad = field.gradient(sCoord:nCoord:)
+        self._lap = field.laplacian(sCoord:nCoord:)
     }
 
     public func value(sCoord: Double, nCoord: Double) -> Double {

@@ -21,7 +21,7 @@ import Foundation
 public struct TackPath: Hashable, Codable {
     public var axis: CourseAxis
     public var strips: [Strip]
-    public var tackingAngle: Double      // θ, radians, off the AB axis
+    public var tackingAngle: Double  // θ, radians, off the AB axis
 
     public init(axis: CourseAxis, strips: [Strip], tackingAngle: Double) {
         self.axis = axis
@@ -94,12 +94,13 @@ public struct TackPath: Hashable, Codable {
         strips.reserveCapacity(N)
         var t = startingTack
         for i in 0..<N {
-            strips.append(Strip(
-                id: i,
-                sStart: Double(i) * w,
-                sEnd: Double(i + 1) * w,
-                tack: t
-            ))
+            strips.append(
+                Strip(
+                    id: i,
+                    sStart: Double(i) * w,
+                    sEnd: Double(i + 1) * w,
+                    tack: t
+                ))
             t = t.opposite
         }
         return TackPath(axis: axis, strips: strips, tackingAngle: θ)
