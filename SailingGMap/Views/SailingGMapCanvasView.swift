@@ -161,10 +161,9 @@ struct SailingGMapCanvasView: View {
         // Boundary at c = 0 is the line s = 0 (the A-edge); boundary at
         // c = 1 is s = L (the B-edge).  Interior boundaries are level
         // curves of `field`.
-        let interior = Foliation.levelCurves(
-            of: field,
-            count: bandCount - 1,
-            samples: 48)
+        // Read the ViewModel's cached curves rather than recomputing the
+        // identical bisection a second time in the same frame (issue #18).
+        let interior = vm.foliationLevelCurves
         // Synthesize the two end-curves as straight vertical lines so
         // every band is bounded by two polylines of the same length.
         let nSamples = 48

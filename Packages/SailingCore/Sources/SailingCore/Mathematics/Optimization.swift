@@ -104,12 +104,16 @@ public extension TackingCost {
         _ path: GeneralizedTackPath,
         field: ProgressField
     ) -> CostBreakdown {
-        let L = lengthWeight * path.sailedLength()
+        // One integration, not three. sailedLength / headingChangesAtTurns /
+        // crossTrackPeak each integrate independently, so asking for all three
+        // — which is exactly what a breakdown does — integrated the trajectory
+        // three times per call (issue #18).
+        let m = path.metrics()
+        let L = lengthWeight * m.sailedLength
         let N = max(0, path.tacks.count - 1)
         let turns = turnPenalty * Double(N)
-        let dθs = path.headingChangesAtTurns()
-        let head = headingChangeWeight * dθs.reduce(0) { $0 + $1 * $1 }
-        let swing = swingPenalty * path.crossTrackPeak()
+        let head = headingChangeWeight * m.headingChanges.reduce(0) { $0 + $1 * $1 }
+        let swing = swingPenalty * m.crossTrackPeak
         let fol = foliationSmoothnessWeight * field.laplacianL2Squared()
         return CostBreakdown(
             length: L, turns: turns,
